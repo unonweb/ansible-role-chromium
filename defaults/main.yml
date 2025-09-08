@@ -1,0 +1,6 @@
+---
+chromium:
+  user: "frida"
+  config:
+    src:
+    tmp: "/home/ansible/tmp/chromium"

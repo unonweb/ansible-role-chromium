@@ -1,0 +1,50 @@
+---
+# NOTES
+# -----
+#
+
+- name: chromium role
+  tags:
+  - chromium
+  block:
+
+  # install
+  - name: Install chromium packages
+    become: true
+    ansible.builtin.apt:
+      state: present
+      name: chromium
+
+  # copy/sync
+  - when: chromium.config.src != None
+    vars:
+      _dst_dir: "/home/{{ chromium.user }}/.config/chromium"
+    block:
+
+    - name: Create path "{{ chromium.config.tmp }}"
+      ansible.builtin.file:
+        path: "{{ chromium.config.tmp }}"
+        mode: u=rwx,g=rwx,o=
+        state: directory
+    
+    # sync to tmp
+    - name: Sync "{{ chromium.config.src }}" to "{{ chromium.config.tmp }}"
+      become: false
+      delegate_to: localhost
+      ansible.builtin.command: /usr/bin/rsync --recursive -e ssh {{ chromium.config.src }}/chromium ansible@{{ inventory_hostname }}:{{ chromium.config.tmp }}
+
+    # copy to dst
+    - name: Copy "{{ chromium.config.tmp }}/chromium" to "{{ _dest_dir }}"
+      # when: sync_result.changed # does not work if sync temp_location was successfull but copy to final location was not
+      become: true
+      ansible.builtin.command:
+        cmd: "cp --recursive {{ chromium.config.tmp }}/chromium {{ _dest_dir }}"
+    
+    - name: Set owner of "{{ _dest_dir }}/chromium"
+      become: true
+      ansible.builtin.file:
+        path: "{{ _dest_dir }}/chromium"
+        state: directory
+        recurse: true
+        owner: "{{ chromium.user }}"
+        group: "{{ chromium.user }}"
