@@ -1,6 +1,4 @@
 ---
-chromium:
-  user: "frida"
-  config:
-    src:
-    tmp: "/home/ansible/tmp/chromium"
+chromium_user: "frida"
+chromium_config_src:
+chromium_config_tmp: "/home/ansible/tmp/chromium"

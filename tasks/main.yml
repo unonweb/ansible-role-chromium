@@ -1,12 +1,19 @@
 ---
-# NOTES
-# -----
-#
-
 - name: chromium role
   tags:
   - chromium
   block:
+
+  # checks
+  - name: Assertions
+    ansible.builtin.assert:
+      that:
+        - chromium_user != None
+
+  # make sure user exists
+  - name: Check if user exists {{ chromium_user }}
+    command: "getent passwd {{ chromium_user }}"
+    changed_when: false
 
   # install
   - name: Install chromium packages
@@ -16,35 +23,37 @@
       name: chromium
 
   # copy/sync
-  - when: chromium.config.src != None
+  - when: chromium_config_src != None
     vars:
-      _dst_dir: "/home/{{ chromium.user }}/.config/chromium"
+      __chromium_config_dst_dir: "/home/{{ chromium_user }}/.config/chromium"
     block:
 
-    - name: Create path "{{ chromium.config.tmp }}"
+    # mkdir
+    - name: Mkdir "{{ chromium_config_tmp }}"
       ansible.builtin.file:
-        path: "{{ chromium.config.tmp }}"
+        path: "{{ chromium_config_tmp }}"
         mode: u=rwx,g=rwx,o=
         state: directory
     
     # sync to tmp
-    - name: Sync "{{ chromium.config.src }}" to "{{ chromium.config.tmp }}"
+    - name: Sync "{{ chromium_config_src }}" to "{{ chromium_config_tmp }}"
       become: false
       delegate_to: localhost
-      ansible.builtin.command: /usr/bin/rsync --recursive -e ssh {{ chromium.config.src }}/chromium ansible@{{ inventory_hostname }}:{{ chromium.config.tmp }}
+      ansible.builtin.command: /usr/bin/rsync --recursive -e ssh {{ chromium_config_src }}/chromium ansible@{{ inventory_hostname }}:{{ chromium_config_tmp }}
 
     # copy to dst
-    - name: Copy "{{ chromium.config.tmp }}/chromium" to "{{ _dest_dir }}"
+    - name: Copy "{{ chromium_config_tmp }}/chromium" to "{{ __chromium_config_dst_dir }}"
       # when: sync_result.changed # does not work if sync temp_location was successfull but copy to final location was not
       become: true
       ansible.builtin.command:
-        cmd: "cp --recursive {{ chromium.config.tmp }}/chromium {{ _dest_dir }}"
+        cmd: "cp --recursive {{ chromium_config_tmp }}/chromium {{ __chromium_config_dst_dir }}"
     
-    - name: Set owner of "{{ _dest_dir }}/chromium"
+    # chown
+    - name: Set owner of "{{ __chromium_config_dst_dir }}/chromium"
       become: true
       ansible.builtin.file:
-        path: "{{ _dest_dir }}/chromium"
+        path: "{{ __chromium_config_dst_dir }}/chromium"
         state: directory
         recurse: true
-        owner: "{{ chromium.user }}"
-        group: "{{ chromium.user }}"
+        owner: "{{ chromium_user }}"
+        group: "{{ chromium_user }}"
